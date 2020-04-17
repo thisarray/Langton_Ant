@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Langton's Ant</title>
+  <style type="text/css" media="screen">
+body {
+  background-color: white;
+  color: black;
+}
+output {
+  display: block;
+  margin-bottom: 1em;
+  margin-left: 1em;
+}
+pre {
+  font-family: "Courier New", monospace;
+  font-size: 20px;
+  line-height: 20px;
+  text-transform: full-width;
+}
+table {
+  border-collapse: collapse;
+  font-size: 16px;
+  line-height: 16px;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+td {
+  background-color: white;
+  border: 1px solid black;
+  color: red;
+  height: 18px;
+  width: 18px;
+}
+.black {
+  background-color: black;
+}
+  </style>
+</head>
+
+<body>
+
+<main>
+<h1>Langton's Ant</h1>
+
+<output id="grid"></output>
+<button id="new">New grid</button>
+<button id="next">Next generation</button>
+<button id="auto">Auto run</button>
+
+<p><a href="https://en.wikipedia.org/wiki/Langton%27s_Ant" target="_blank">Langton's Ant</a>
+moves according to the rules:</p>
+
+<ul>
+  <li>At a black square, turn 90 degrees counter-clockwise, flip the color of the square, move forward one unit.</li>
+  <li>At a white square, turn 90 degrees clockwise, flip the color of the square, move forward one unit.</li>
+</ul>
+
+</main>
+
+<script>
+/*
+ * Size in pixels of each cell.
+ */
+const SCALE = 20;
+
+/*
+ * Deltas in the x- and y-coordinates corresponding to the four cardinal directions.
+ */
+const DIRECTIONS = [
+  [-1, 0],
+  [0, -1],
+  [1, 0],
+  [0, 1]
+];
+
+/*
+ * Characters representing the ant in each of the four directions of DIRECTIONS.
+ */
+const TEXT_ANT = '<A>V';
+
+class Grid {
+  constructor(width, height) {
+    this.width = Math.max(1, width);
+    this.height = Math.max(1, height);
+    this.cells = new Array(this.width * this.height).fill(false);
+    this.antX = Math.floor(this.width / 2);
+    this.antY = Math.floor(this.height / 2);
+    this.antDirection = 0;
+  }
+  coordinatesToIndex(x, y) {
+    return x + (y * this.width);
+  }
+  isAnt(x, y) {
+    if (x < 0) {
+      return false;
+    }
+    if (y < 0) {
+      return false;
+    }
+    if (x >= this.width) {
+      return false;
+    }
+    if (y >= this.height) {
+      return false;
+    }
+    return ((this.antX == x) && (this.antY == y));
+  }
+  isBlack(x, y) {
+    if (x < 0) {
+      return false;
+    }
+    if (y < 0) {
+      return false;
+    }
+    if (x >= this.width) {
+      return false;
+    }
+    if (y >= this.height) {
+      return false;
+    }
+    return this.cells[this.coordinatesToIndex(x, y)];
+  }
+
+  /*
+   * Return a new Grid containing the next step based on the rules.
+   */
+  nextGeneration() {
+    let grid = new Grid(this.width, this.height),
+        index = this.coordinatesToIndex(this.antX, this.antY);
+    grid.cells = this.cells.slice();
+    if (this.cells[index]) {
+      // If the ant is at a black square, then turn 90 degrees counter-clockwise
+      // Add instead of subtracting to avoid a negative number
+      grid.antDirection = (this.antDirection + (DIRECTIONS.length - 1)) % DIRECTIONS.length;
+      // Flip the color of the square
+      grid.cells[index] = false;
+    }
+    else {
+      // The ant is at a white square, then turn 90 degrees clockwise
+      grid.antDirection = (this.antDirection + 1) % DIRECTIONS.length;
+      // Flip the color of the square
+      grid.cells[index] = true;
+    }
+
+    // Move forward one unit
+    let [dx, dy] = DIRECTIONS[grid.antDirection];
+    grid.antX = this.antX + dx;
+    grid.antY = this.antY + dy;
+    if (grid.antX < 0) {
+      grid.antX = 0;
+    }
+    if (grid.antY < 0) {
+      grid.antY = 0;
+    }
+    if (grid.antX >= grid.width) {
+      grid.antX = grid.width - 1;
+    }
+    if (grid.antY >= grid.height) {
+      grid.antY = grid.height - 1;
+    }
+
+    return grid;
+  }
+
+  /*
+   * Move the ant to (x, y).
+   */
+  moveAnt(x, y) {
+    if (x < 0) {
+      return this;
+    }
+    if (y < 0) {
+      return this;
+    }
+    if (x >= this.width) {
+      return this;
+    }
+    if (y >= this.height) {
+      return this;
+    }
+
+    let grid = new Grid(this.width, this.height);
+    grid.cells = this.cells.slice();
+    if (this.isAnt(x, y)) {
+      grid.antX = this.antX;
+      grid.antY = this.antY;
+      grid.antDirection = (this.antDirection + 1) % DIRECTIONS.length;
+    }
+    else {
+      grid.antX = x;
+      grid.antY = y;
+      grid.antDirection = 0;
+    }
+
+    return grid;
+  }
+
+  /*
+   * Flip the color of the square at (x, y).
+   */
+  toggle(x, y) {
+    if (x < 0) {
+      return this;
+    }
+    if (y < 0) {
+      return this;
+    }
+    if (x >= this.width) {
+      return this;
+    }
+    if (y >= this.height) {
+      return this;
+    }
+
+    let grid = new Grid(this.width, this.height),
+        index = this.coordinatesToIndex(x, y);
+    grid.cells = this.cells.slice();
+    grid.cells[index] = !this.cells[index];
+    grid.antX = this.antX;
+    grid.antY = this.antY;
+    grid.antDirection = this.antDirection;
+
+    return grid;
+  }
+
+  /*
+   * A short test suite to confirm the Grid class works.
+   */
+  static test() {
+    let grid = new Grid(7, 11);
+    console.assert(grid.width == 7,
+                   {msg: 'grid.width is incorrect.'});
+    console.assert(grid.height == 11,
+                   {msg: 'grid.height is incorrect.'});
+    console.assert(grid.cells.every(v => v == false),
+                   {msg: 'grid.cells is incorrect.'});
+    console.assert(grid.antX == Math.floor(7 / 2),
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == Math.floor(11 / 2),
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 0,
+                   {msg: 'grid.antDirection is incorrect.'});
+    console.assert(grid.isAnt(grid.antX, grid.antY),
+                   {msg: 'grid.isAnt() is incorrect.'});
+    for (let x = -1; x <= grid.width; x++) {
+      for (let y = -1; y <= grid.height; y++) {
+        if ((x == grid.antX) && (y == grid.antY)) {
+          console.assert(grid.isAnt(x, y),
+                         {msg: 'grid.isAnt() is incorrect.'});
+        }
+        else {
+          console.assert(!grid.isAnt(x, y),
+                         {msg: 'grid.isAnt() is incorrect.'});
+        }
+        console.assert(!grid.isBlack(x, y),
+                       {msg: 'grid.isBlack() is incorrect.'});
+      }
+    }
+
+    grid.antX = 0;
+    grid.antY = 0;
+    console.assert(grid.isAnt(0, 0),
+                   {msg: 'grid.isAnt() is incorrect.'});
+    console.assert(grid.moveAnt(-1, 0) == grid,
+                   {msg: 'grid.moveAnt() is incorrect.'});
+    console.assert(grid.moveAnt(0, -1) == grid,
+                   {msg: 'grid.moveAnt() is incorrect.'});
+    console.assert(grid.moveAnt(grid.width, 0) == grid,
+                   {msg: 'grid.moveAnt() is incorrect.'});
+    console.assert(grid.moveAnt(0, grid.height) == grid,
+                   {msg: 'grid.moveAnt() is incorrect.'});
+    for (let expected = 0; expected <= DIRECTIONS.length; expected++) {
+      grid = grid.moveAnt(3, 5);
+      console.assert(!grid.isAnt(0, 0),
+                     {msg: 'grid.isAnt() is incorrect.'});
+      console.assert(grid.isAnt(3, 5),
+                     {msg: 'grid.isAnt() is incorrect.'});
+      console.assert(grid.antDirection == (expected % DIRECTIONS.length),
+                     {msg: 'grid.antDirection is incorrect.'});
+    }
+    console.assert(grid.antX == 3,
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == 5,
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 0,
+                   {msg: 'grid.antDirection is incorrect.'});
+
+    console.assert(grid.toggle(-1, 0) == grid,
+                   {msg: 'grid.toggle() is incorrect.'});
+    console.assert(grid.toggle(0, -1) == grid,
+                   {msg: 'grid.toggle() is incorrect.'});
+    console.assert(grid.toggle(grid.width, 0) == grid,
+                   {msg: 'grid.toggle() is incorrect.'});
+    console.assert(grid.toggle(0, grid.height) == grid,
+                   {msg: 'grid.toggle() is incorrect.'});
+    console.assert(grid.cells.every(v => v == false),
+                   {msg: 'grid.cells is incorrect.'});
+    grid = grid.toggle(1, 0);
+    console.assert(grid.cells[0] == false,
+                   {msg: 'grid.cells is incorrect.'});
+    console.assert(grid.cells[1] == true,
+                   {msg: 'grid.cells is incorrect.'});
+    console.assert(grid.cells.slice(2).every(v => v == false),
+                   {msg: 'grid.cells is incorrect.'});
+    console.assert(grid.antX == 3,
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == 5,
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 0,
+                   {msg: 'grid.antDirection is incorrect.'});
+
+    grid = grid.nextGeneration();
+    console.assert(grid.antX == 3,
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == 4,
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 1,
+                   {msg: 'grid.antDirection is incorrect.'});
+    for (let x = 0; x < grid.width; x++) {
+      for (let y = 0; y < grid.height; y++) {
+        if (((x == 1) && (y == 0)) || ((x == 3) && (y == 5))) {
+          console.assert(grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+        else {
+          console.assert(!grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+      }
+    }
+
+    grid = grid.nextGeneration();
+    console.assert(grid.antX == 4,
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == 4,
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 2,
+                   {msg: 'grid.antDirection is incorrect.'});
+    for (let x = 0; x < grid.width; x++) {
+      for (let y = 0; y < grid.height; y++) {
+        if (((x == 1) && (y == 0)) || ((x == 3) && (y == 5)) || ((x == 3) && (y == 4))) {
+          console.assert(grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+        else {
+          console.assert(!grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+      }
+    }
+
+    grid = grid.nextGeneration();
+    console.assert(grid.antX == 4,
+                   {msg: 'grid.antX is incorrect.'});
+    console.assert(grid.antY == 5,
+                   {msg: 'grid.antY is incorrect.'});
+    console.assert(grid.antDirection == 3,
+                   {msg: 'grid.antDirection is incorrect.'});
+    for (let x = 0; x < grid.width; x++) {
+      for (let y = 0; y < grid.height; y++) {
+        if (((x == 1) && (y == 0)) || ((x == 3) && (y == 5)) || ((x == 3) && (y == 4)) || ((x == 4) && (y == 4))) {
+          console.assert(grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+        else {
+          console.assert(!grid.isBlack(x, y),
+                         {msg: 'grid.isBlack() is incorrect.'});
+        }
+      }
+    }
+  }
+}
+Grid.test();
+
+class Display {
+  constructor(parent) {
+    if (!(parent instanceof Node)) {
+      throw new TypeError('Bad DOM parent.');
+    }
+    this.parent = parent;
+  }
+  draw(grid) {
+    console.assert(false, {msg: 'Not implemented'});
+  }
+}
+
+class ASCIIDisplay extends Display {
+  constructor(parent, blackCell = 'O', whiteCell = ' ') {
+    super(parent);
+    this.blackCell = blackCell;
+    this.whiteCell = whiteCell;
+  }
+  draw(grid) {
+    let target = this.parent.querySelector('pre');
+    if (target == null) {
+      this.parent.innerHTML = '';
+      target = document.createElement('pre');
+      this.parent.appendChild(target);
+    }
+
+    let rows = [];
+    for (let y = 0; y < grid.height; y++) {
+      let row = [];
+      for (let x = 0; x < grid.width; x++) {
+        if (grid.isAnt(x, y)) {
+          row.push(TEXT_ANT.charAt(grid.antDirection));
+        }
+        else if (grid.isBlack(x, y)) {
+          row.push(this.blackCell);
+        }
+        else {
+          row.push(this.whiteCell);
+        }
+      }
+      rows.push(row.join(''));
+    }
+    target.textContent = rows.join('\n');
+  }
+}
+
+class CanvasDisplay extends Display {
+  constructor(parent, blackColor = '#000000', whiteColor = '#FFFFFF', antColor = '#FF0000') {
+    super(parent);
+    this.blackColor = blackColor;
+    this.whiteColor = whiteColor;
+    this.antColor = antColor;
+  }
+  draw(grid) {
+    let target = this.parent.querySelector('canvas');
+    if (target == null) {
+      this.parent.innerHTML = '';
+      target = document.createElement('canvas');
+      this.parent.appendChild(target);
+    }
+    let width = grid.width * SCALE,
+        height = grid.height * SCALE,
+        middle = SCALE / 2;
+    if ((target.width != width) || (target.height != height)) {
+      target.width = width;
+      target.height = height;
+    }
+
+    let context = target.getContext('2d');
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.strokeStyle = this.blackColor;
+
+    context.fillStyle = this.whiteColor;
+    context.fillRect(0, 0, width, height);
+    for (let y = 0; y < grid.height; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        if (grid.isBlack(x, y)) {
+          context.fillStyle = this.blackColor;
+          context.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+        }
+        if (grid.isAnt(x, y)) {
+          context.fillStyle = this.antColor;
+          context.fillText(TEXT_ANT.charAt(grid.antDirection), (x * SCALE) + middle, (y * SCALE) + middle);
+        }
+      }
+    }
+
+    // Draw grid lines
+    context.beginPath();
+    context.moveTo(1, 1);
+    context.lineTo(width - 1, 1);
+    context.lineTo(width - 1, height - 1);
+    context.lineTo(1, height - 1);
+    context.closePath();
+    context.stroke();
+    for (let x = 1; x < grid.width; x++) {
+      context.beginPath();
+      context.moveTo(x * SCALE, 0);
+      context.lineTo(x * SCALE, height);
+      context.stroke();
+    }
+    for (let y = 1; y < grid.height; y++) {
+      context.beginPath();
+      context.moveTo(0, y * SCALE);
+      context.lineTo(width, y * SCALE);
+      context.stroke();
+    }
+  }
+}
+
+class TableDisplay extends Display {
+  constructor(parent) {
+    super(parent);
+  }
+  draw(grid) {
+    let target = this.parent.querySelector('table');
+    if (target == null) {
+      this.parent.innerHTML = '';
+      target = document.createElement('table');
+      this.parent.appendChild(target);
+    }
+
+    let rows = [];
+    for (let y = 0; y < grid.height; y++) {
+      let row = [];
+      row.push('  <tr>');
+      for (let x = 0; x < grid.width; x++) {
+        let cell = '    ';
+        if (grid.isBlack(x, y)) {
+          cell += '<td class="black">';
+        }
+        else {
+          cell += '<td>';
+        }
+        if (grid.isAnt(x, y)) {
+          cell += TEXT_ANT.charAt(grid.antDirection);
+        }
+        cell += '</td>';
+        row.push(cell);
+      }
+      row.push('  </tr>');
+      rows.push(row.join('\n'));
+    }
+    target.innerHTML = rows.join('\n');
+  }
+}
+
+let output = document.querySelector('#grid');
+//let display = new ASCIIDisplay(output);
+let display = new CanvasDisplay(output);
+//let display = new TableDisplay(output);
+
+let grid = null;
+function turn() {
+  if (grid) {
+    grid = grid.nextGeneration();
+  }
+  else {
+    grid = new Grid(20, 20);
+  }
+  display.draw(grid);
+}
+turn();
+
+output.addEventListener('click', (event) => {
+  let box = output.getBoundingClientRect(),
+      x = Math.min(Math.floor((event.clientX - box.left) / SCALE), grid.width - 1),
+      y = Math.min(Math.floor((event.clientY - box.top) / SCALE), grid.height - 1);
+  if (x < 0) {
+    x = 0;
+  }
+  if (y < 0) {
+    y = 0;
+  }
+  if (event.ctrlKey) {
+    grid = grid.moveAnt(x, y);
+  }
+  else {
+    grid = grid.toggle(x, y);
+  }
+  display.draw(grid);
+});
+document.querySelector('#new').addEventListener('click', (event) => {
+  grid = null;
+  turn();
+});
+document.querySelector('#next').addEventListener('click', (event) => {
+  turn();
+});
+
+let running = null;
+document.querySelector('#auto').addEventListener('click', (event) => {
+  if (running) {
+    clearInterval(running);
+    running = null;
+  }
+  else {
+    running = setInterval(turn, 200);
+  }
+});
+</script>
+</body>
+
+</html>
