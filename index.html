@@ -237,7 +237,7 @@ class Grid {
                    {msg: 'grid.width is incorrect.'});
     console.assert(grid.height == 11,
                    {msg: 'grid.height is incorrect.'});
-    console.assert(grid.cells.every(v => v == false),
+    console.assert(grid.cells.every(v => (v == false)),
                    {msg: 'grid.cells is incorrect.'});
     console.assert(grid.antX == Math.floor(7 / 2),
                    {msg: 'grid.antX is incorrect.'});
@@ -298,14 +298,14 @@ class Grid {
                    {msg: 'grid.toggle() is incorrect.'});
     console.assert(grid.toggle(0, grid.height) == grid,
                    {msg: 'grid.toggle() is incorrect.'});
-    console.assert(grid.cells.every(v => v == false),
+    console.assert(grid.cells.every(v => (v == false)),
                    {msg: 'grid.cells is incorrect.'});
     grid = grid.toggle(1, 0);
     console.assert(grid.cells[0] == false,
                    {msg: 'grid.cells is incorrect.'});
     console.assert(grid.cells[1] == true,
                    {msg: 'grid.cells is incorrect.'});
-    console.assert(grid.cells.slice(2).every(v => v == false),
+    console.assert(grid.cells.slice(2).every(v => (v == false)),
                    {msg: 'grid.cells is incorrect.'});
     console.assert(grid.antX == 3,
                    {msg: 'grid.antX is incorrect.'});
