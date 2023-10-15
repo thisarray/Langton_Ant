@@ -12,8 +12,7 @@ body {
 }
 output {
   display: block;
-  margin-bottom: 1em;
-  margin-left: 1em;
+  margin: 1em 0;
 }
 pre {
   font-family: "Courier New", monospace;
@@ -23,18 +22,19 @@ pre {
 }
 table {
   border-collapse: collapse;
-  font-size: 16px;
-  line-height: 16px;
   margin: 0;
   padding: 0;
-  text-align: center;
 }
 td {
-  background-color: white;
   border: 1px solid black;
+  font-size: 14px;
+  text-align: center;
+  /* height and width so resulting cell is 20px by 20px */
+  height: 17px;
+  width: 17px;
+}
+.ant {
   color: red;
-  height: 18px;
-  width: 18px;
 }
 .black {
   background-color: black;
@@ -174,7 +174,7 @@ class Grid {
     grid.cells = this.cells.slice();
     if (this.cells[index]) {
       // If the ant is at a black square, then turn 90 degrees counter-clockwise
-      // Add instead of subtracting to avoid a negative number
+      // Add instead of subtract to avoid a negative number
       grid.antDirection = (this.antDirection + (DIRECTIONS.length - 1)) % DIRECTIONS.length;
       // Flip the color of the square
       grid.cells[index] = false;
@@ -445,11 +445,12 @@ class Display {
 }
 
 class ASCIIDisplay extends Display {
-  constructor(parent, blackCell = 'O', whiteCell = ' ') {
+  constructor(parent, blackSquare = 'O', whiteSquare = ' ') {
     super(parent);
-    this.blackCell = blackCell;
-    this.whiteCell = whiteCell;
+    this.blackSquare = blackSquare;
+    this.whiteSquare = whiteSquare;
   }
+
   draw(grid) {
     let target = this.parent.querySelector('pre');
     if (target == null) {
@@ -466,10 +467,10 @@ class ASCIIDisplay extends Display {
           row.push(TEXT_ANT.charAt(grid.antDirection));
         }
         else if (grid.isBlack(x, y)) {
-          row.push(this.blackCell);
+          row.push(this.blackSquare);
         }
         else {
-          row.push(this.whiteCell);
+          row.push(this.whiteSquare);
         }
       }
       rows.push(row.join(''));
@@ -479,28 +480,31 @@ class ASCIIDisplay extends Display {
 }
 
 class CanvasDisplay extends Display {
-  constructor(parent, blackColor = '#000000', whiteColor = '#FFFFFF', antColor = '#FF0000') {
+  constructor(parent, blackColor = 'black', whiteColor = 'white', antColor = 'red') {
     super(parent);
     this.blackColor = blackColor;
     this.whiteColor = whiteColor;
     this.antColor = antColor;
   }
+
   draw(grid) {
-    let target = this.parent.querySelector('canvas');
+    let target = this.parent.querySelector('canvas'),
+        width = grid.width * SCALE,
+        height = grid.height * SCALE,
+        middle = Math.floor(SCALE / 2),
+        context;
     if (target == null) {
       this.parent.innerHTML = '';
       target = document.createElement('canvas');
       this.parent.appendChild(target);
     }
-    let width = grid.width * SCALE,
-        height = grid.height * SCALE,
-        middle = SCALE / 2;
-    if ((target.width != width) || (target.height != height)) {
+    if ((target.width !== width) || (target.height !== height)) {
       target.width = width;
       target.height = height;
     }
 
-    let context = target.getContext('2d');
+    context = target.getContext('2d');
+    context.font = '14px monospace';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.strokeStyle = this.blackColor;
@@ -521,6 +525,7 @@ class CanvasDisplay extends Display {
     }
 
     // Draw grid lines
+    // Outer border
     context.beginPath();
     context.moveTo(1, 1);
     context.lineTo(width - 1, 1);
@@ -528,12 +533,14 @@ class CanvasDisplay extends Display {
     context.lineTo(1, height - 1);
     context.closePath();
     context.stroke();
+    // Vertical lines
     for (let x = 1; x < grid.width; x++) {
       context.beginPath();
       context.moveTo(x * SCALE, 0);
       context.lineTo(x * SCALE, height);
       context.stroke();
     }
+    // Horizontal lines
     for (let y = 1; y < grid.height; y++) {
       context.beginPath();
       context.moveTo(0, y * SCALE);
@@ -544,9 +551,6 @@ class CanvasDisplay extends Display {
 }
 
 class TableDisplay extends Display {
-  constructor(parent) {
-    super(parent);
-  }
   draw(grid) {
     let target = this.parent.querySelector('table');
     if (target == null) {
@@ -555,35 +559,32 @@ class TableDisplay extends Display {
       this.parent.appendChild(target);
     }
 
-    let rows = [];
+    target.innerHTML = '';
     for (let y = 0; y < grid.height; y++) {
-      let row = [];
-      row.push('  <tr>');
+      let row = document.createElement('tr');
       for (let x = 0; x < grid.width; x++) {
-        let cell = '    ';
+        let cell = document.createElement('td');
         if (grid.isBlack(x, y)) {
-          cell += '<td class="black">';
-        }
-        else {
-          cell += '<td>';
+          cell.classList.add('black');
         }
         if (grid.isAnt(x, y)) {
-          cell += TEXT_ANT.charAt(grid.antDirection);
+          cell.appendChild(document.createTextNode(TEXT_ANT.charAt(grid.antDirection)));
+          cell.classList.add('ant');
         }
-        cell += '</td>';
-        row.push(cell);
+        else {
+          cell.appendChild(document.createTextNode('    '));
+        }
+        row.appendChild(cell);
       }
-      row.push('  </tr>');
-      rows.push(row.join('\n'));
+      target.appendChild(row);
     }
-    target.innerHTML = rows.join('\n');
   }
 }
 
 const OUTPUT = document.querySelector('#grid');
 //let display = new ASCIIDisplay(OUTPUT);
-let display = new CanvasDisplay(OUTPUT);
-//let display = new TableDisplay(OUTPUT);
+//let display = new CanvasDisplay(OUTPUT);
+let display = new TableDisplay(OUTPUT);
 
 let grid = null,
     running = 0;
